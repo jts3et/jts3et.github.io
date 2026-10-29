@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Reading — Morphing Intelligence</title>
+<link rel="stylesheet" href="libs/pdf_viewer.min.css">
+<link rel="stylesheet" href="app.css">
+<script src="libs/pdf.min.js"></script>
+<script src="libs/supabase.min.js"></script>
+</head>
+<body>
+
+<div class="gate" id="gate">
+  <div class="gate-box">
+    <h1>Morphing Intelligence</h1>
+    <div class="sub">Catherine Malabou · Center for Possible Minds reading group · Fall 2026</div>
+    <div class="row">
+      <input type="email" id="gateEmail" placeholder="your email address" autocomplete="email" onkeydown="if(event.key==='Enter')signIn()">
+      <input type="password" id="gatePw" placeholder="password" autocomplete="current-password" onkeydown="if(event.key==='Enter')signIn()">
+      <button class="btn acc" onclick="signIn()">Sign in</button>
+    </div>
+    <div class="gate-msg" id="gateMsg"></div>
+    <p class="fine">Use the email address and password from the invitation. Lost them? Write to jtstec@iu.edu.</p>
+  </div>
+</div>
+
+<header class="app">
+  <h1><a href="index.html">Morphing Intelligence</a> <span id="weekLabel"></span></h1>
+  <div class="who"><span id="whoName"></span><button onclick="signOut()">Sign out</button></div>
+</header>
+
+<main class="reader">
+  <div class="bar">
+    <a class="btn sm" href="index.html">← All readings</a>
+    <b id="rTitle">Loading…</b>
+    <span class="pg" id="rPage"></span>
+    <button class="btn sm" onclick="zoom(-0.2)">−</button>
+    <button class="btn sm" onclick="zoom(0.2)">+</button>
+    <button class="btn sm" id="dlBtn" onclick="downloadCurrent()">⬇ Download PDF</button>
+  </div>
+  <div class="stage">
+    <div class="pdf" id="pdf"><div class="pdf-empty">Loading…</div></div>
+    <aside class="ann">
+      <h3><span>Annotations <span id="annCount"></span></span><label><input type="checkbox" id="pageOnly" onchange="renderAnnotations()"> this page only</label></h3>
+      <div class="form" id="form" hidden>
+        <div class="q" id="formQuote"></div>
+        <textarea id="formText" placeholder="Your note (leave empty for a plain highlight)"></textarea>
+        <div class="row">
+          <label><input type="checkbox" id="formPrivate"> Keep private</label>
+          <button class="btn sm" onclick="cancelForm()">Cancel</button>
+          <button class="btn sm acc" onclick="saveAnnotation()">Save</button>
+        </div>
+      </div>
+      <div id="annList"><div class="empty">Select a passage in the reading to highlight it and add a note.</div></div>
+    </aside>
+  </div>
+</main>
+
+<div class="pop" id="pop"><button onclick="startAnnotation()">Highlight &amp; note</button></div>
+<div class="toast" id="toast"></div>
+
+<script src="app.js"></script>
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'libs/pdf.worker.min.js';
+let current = null, pdfDoc = null, scale = 1, annotations = [];
+let sel = {text:'', page:null}, editingId = null, subscribed = false;
+
+function onSignedIn(){
+  const id = location.hash.replace('#','');
+  if (!FILES[id]) { location.href = 'index.html'; return; }
+  if (!subscribed){ subscribed = true; db.channel('mi-annotations').on('postgres_changes', { event:'*', schema:'public', table:'group_annotations' }, () => { if (current) loadAnnotations(); }).subscribe(); }
+  openReading(id);
+}
+window.addEventListener('hashchange', ()=>{ const h=location.hash.replace('#',''); if (user && FILES[h] && h!==current) openReading(h); });
+
+async function openReading(id){
+  const f = FILES[id]; current = id; markSeen(id);
+  document.title = f.title + ' — Morphing Intelligence';
+  $('weekLabel').textContent = f.week.n ? `Week ${f.week.n} · ${f.week.date}` : f.week.date;
+  $('rTitle').textContent = f.title; $('rPage').textContent='';
+  $('pdf').innerHTML = '<div class="pdf-empty">Loading…</div>';
+  cancelForm(); await loadAnnotations();
+  try {
+    const url = await signedUrl(f.path, 3600);
+    pdfDoc = await pdfjsLib.getDocument({ url }).promise;
+    scale = 1; await renderPages();
+  } catch (e) {
+    console.warn(e);
+    $('pdf').innerHTML = '<div class="pdf-empty">This file is not available yet.<br><small>'+esc(e.message||'')+'</small></div>';
+  }
+}
+async function renderPages(){
+  const host = $('pdf'); host.innerHTML='';
+  for (let n=1;n<=pdfDoc.numPages;n++){
+    const c = document.createElement('div'); c.className='pdf-page-container'; c.id='pc-'+n; c.dataset.page=n;
+    c.innerHTML = `<canvas id="cv-${n}"></canvas><div class="textLayer" id="tl-${n}"></div>`; host.appendChild(c);
+  }
+  $('rPage').textContent = '1 of ' + pdfDoc.numPages;
+  for (let n=1;n<=pdfDoc.numPages;n++) await renderPage(n);
+  host.onscroll = trackPage; applyHighlights();
+}
+async function renderPage(n){
+  const page = await pdfDoc.getPage(n), host=$('pdf');
+  const avail = Math.min(host.clientWidth-40, 900);
+  const base = page.getViewport({scale:1}); const s = (avail/base.width)*scale;
+  const vp = page.getViewport({scale:s}); const cv=$('cv-'+n); const ctx=cv.getContext('2d');
+  const dpr = window.devicePixelRatio||1; cv.width=vp.width*dpr; cv.height=vp.height*dpr; cv.style.width=vp.width+'px'; cv.style.height=vp.height+'px';
+  const pc = cv.parentElement; pc.style.width=vp.width+'px'; pc.style.height=vp.height+'px';
+  await page.render({canvasContext:ctx, viewport:vp, transform:[dpr,0,0,dpr,0,0]}).promise;
+  const tl=$('tl-'+n); tl.innerHTML=''; tl.style.setProperty('--scale-factor', s);
+  const tc = await page.getTextContent();
+  await pdfjsLib.renderTextLayer({ textContent:tc, container:tl, viewport:vp, textDivs:[] }).promise;
+}
+function zoom(d){ if(!pdfDoc) return; scale = Math.max(.6, Math.min(2.4, scale+d)); renderPages(); }
+function trackPage(){
+  const host=$('pdf'), top=host.getBoundingClientRect().top + host.clientHeight/3; let best=1, dist=1e9;
+  document.querySelectorAll('.pdf-page-container').forEach(pc=>{ const r=pc.getBoundingClientRect(); const d=Math.abs((r.top+r.height/2)-top); if(d<dist){dist=d;best=+pc.dataset.page;} });
+  if (pdfDoc) $('rPage').textContent = best + ' of ' + pdfDoc.numPages;
+  if ($('pageOnly').checked) renderAnnotations();
+}
+function currentPage(){ return parseInt(($('rPage').textContent||'1').split(' ')[0])||1; }
+function goToPage(n){ const pc=$('pc-'+n); if(pc) pc.scrollIntoView({behavior:'smooth', block:'start'}); }
+async function downloadCurrent(){
+  const f = FILES[current]; if (!f) return;
+  try { const url = await signedUrl(f.path, 3600); const a=document.createElement('a'); a.href=url; a.download=f.path; a.target='_blank'; document.body.appendChild(a); a.click(); a.remove(); }
+  catch(e){ toast('Download failed: '+e.message); }
+}
+
+/* selection → highlight */
+document.addEventListener('mouseup', e => setTimeout(()=>{
+  const pop=$('pop'); const s=window.getSelection(); const text=s.toString().replace(/\s+/g,' ').trim();
+  const inPdf = e.target.closest && e.target.closest('.pdf');
+  if (text.length>3 && current && inPdf){
+    sel.text=text; const pc=e.target.closest('.pdf-page-container'); sel.page = pc? +pc.dataset.page : currentPage();
+    pop.style.left=(e.pageX)+'px'; pop.style.top=(e.pageY+8)+'px'; pop.style.display='block';
+  }
+},10));
+document.addEventListener('mousedown', e => { if (!e.target.closest('.pop')) $('pop').style.display='none'; });
+function startAnnotation(){ editingId=null; $('pop').style.display='none'; $('formQuote').textContent='“'+sel.text+'”'; $('formText').value=''; $('formPrivate').checked=false; $('form').hidden=false; $('formText').focus(); }
+function cancelForm(){ $('form').hidden=true; editingId=null; }
+function editAnnotation(id){ const a=annotations.find(x=>x.id===id); if(!a) return; editingId=id; sel={text:a.quote,page:a.page_num}; $('formQuote').textContent='“'+a.quote+'”'; $('formText').value=a.comment||''; $('formPrivate').checked=!a.shared; $('form').hidden=false; $('formText').focus(); }
+
+/* annotations */
+async function loadAnnotations(){
+  const { data, error } = await db.from('group_annotations').select('*').eq('group_slug', GROUP).eq('reading_id', current).order('created_at', {ascending:false});
+  if (error) { console.warn(error); toast('Could not load annotations'); annotations=[]; } else annotations = data||[];
+  renderAnnotations(); applyHighlights();
+}
+async function saveAnnotation(){
+  const comment=$('formText').value.trim(), shared=!$('formPrivate').checked;
+  if (editingId){
+    const { error } = await db.from('group_annotations').update({ comment, shared, updated_at:new Date().toISOString() }).eq('id', editingId);
+    if (error) return toast('Save failed: '+error.message);
+  } else {
+    const row = { group_slug:GROUP, reading_id:current, quote:sel.text, page_num:sel.page, comment, shared, user_id:user.id, author_email:user.email, author_name:displayName };
+    const { error } = await db.from('group_annotations').insert([row]);
+    if (error) return toast('Save failed: '+error.message);
+  }
+  cancelForm(); await loadAnnotations(); toast(shared?'Saved':'Saved (private)');
+}
+async function deleteAnnotation(id){
+  const { error } = await db.from('group_annotations').delete().eq('id', id);
+  if (error) return toast('Delete failed: '+error.message);
+  await loadAnnotations();
+}
+async function saveReply(id){
+  const ta=$('reply-'+id); const text=(ta.value||'').trim(); if(!text) return;
+  const a=annotations.find(x=>x.id===id); const replies=[...(a.replies||[]), {id:Date.now().toString(), comment:text, author_email:user.email, author_name:displayName, created_at:new Date().toISOString()}];
+  const { error } = await db.from('group_annotations').update({ replies }).eq('id', id);
+  if (error) return toast('Reply failed: '+error.message);
+  await loadAnnotations();
+}
+function toggleReply(id){ const r=$('replybox-'+id); r.hidden=!r.hidden; if(!r.hidden) $('reply-'+id).focus(); }
+function renderAnnotations(){
+  let items = annotations.slice();
+  if ($('pageOnly').checked){ const p=currentPage(); items=items.filter(a=>a.page_num===p); }
+  $('annCount').textContent = items.length? '('+items.length+')':'';
+  if (!items.length){ $('annList').innerHTML='<div class="empty">'+(annotations.length?'No annotations on this page.':'Select a passage in the reading to highlight it and add a note.')+'</div>'; return; }
+  const dt = d => new Date(d).toLocaleDateString(undefined,{month:'short',day:'numeric'});
+  $('annList').innerHTML = items.map(a=>{
+    const mine = a.user_id===user.id;
+    return `<div class="card ${mine?'mine':''}">
+      <div class="who">${esc(a.author_name||a.author_email)}<small>${dt(a.created_at)}${a.page_num?' · p. '+a.page_num:''}</small>${a.shared?'':'<span class="priv">private</span>'}</div>
+      <div class="q" onclick="goToPage(${a.page_num||1})">“${esc(a.quote)}”</div>
+      ${a.comment?`<div class="r">${esc(a.comment)}</div>`:''}
+      ${(a.replies||[]).map(r=>`<div class="reply"><div class="who">${esc(r.author_name||r.author_email)}<small>${dt(r.created_at)}</small></div><div class="r">${esc(r.comment)}</div></div>`).join('')}
+      <div class="acts">${a.shared?`<button onclick="toggleReply('${a.id}')">Reply</button>`:''}${mine?`<button onclick="editAnnotation('${a.id}')">Edit</button><button onclick="deleteAnnotation('${a.id}')">Delete</button>`:''}</div>
+      <div id="replybox-${a.id}" hidden style="margin-top:6px"><textarea id="reply-${a.id}"></textarea><div style="text-align:right;margin-top:4px"><button class="btn sm acc" onclick="saveReply('${a.id}')">Reply</button></div></div>
+    </div>`;
+  }).join('');
+}
+function norm(s){ return (s||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim(); }
+function applyHighlights(){
+  document.querySelectorAll('.textLayer span.hl').forEach(s=>s.classList.remove('hl','mine'));
+  for (const a of annotations){
+    if (!a.page_num || !a.quote) continue;
+    const tl=$('tl-'+a.page_num); if(!tl) continue;
+    const q=norm(a.quote); if (q.length<4) continue;
+    const spans=[...tl.querySelectorAll('span')];
+    outer: for (let i=0;i<spans.length;i++){
+      let acc='';
+      for (let j=i;j<spans.length && j<i+80;j++){
+        acc = (acc+' '+norm(spans[j].textContent)).trim();
+        if (acc.includes(q)){ for(let k=i;k<=j;k++){ spans[k].classList.add('hl'); if(a.user_id===user.id) spans[k].classList.add('mine'); } break outer; }
+        if (!q.startsWith(acc.slice(0, Math.min(acc.length, q.length)))) break;
+      }
+    }
+  }
+}
+</script>
+</body>
+</html>
