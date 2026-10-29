@@ -8,25 +8,28 @@ const ORGANIZERS = ['jtstec@iu.edu','stecj2700@gmail.com'];
 const WEEKS = [
   {n:1, date:'Nov 6', title:'Translator’s Foreword, Preface, Introduction',
    files:[{id:'w1-malabou', label:'Malabou · 35 pp', path:'week1-malabou-foreword-preface-introduction.pdf', title:'Malabou, Foreword, Preface, Introduction'},
-          {id:'w1-james', label:'James · 12 pp', path:'week1-james-introduction-plasticity.pdf', title:'James, Introduction to Plasticity: The Promise of Explosion'}],
-   opt:null},
+          {id:'w1-james', label:'James, Introduction to <i>Plasticity</i> · 12 pp', path:'week1-james-introduction-plasticity.pdf', title:'James, Introduction to Plasticity: The Promise of Explosion'}]},
   {n:2, date:'Nov 13', title:'Ch. 1, “g: Intelligence and Genetic Fate”',
-   files:[{id:'w2', label:'Ch. 1 · 38 pp', path:'week2-ch1-g.pdf', title:'Ch. 1, g: Intelligence and Genetic Fate'}],
-   opt:'Optional: Gould, <i>The Mismeasure of Man</i> (rev. ed. 1996), ch. 6'},
+   files:[{id:'w2', label:'Malabou, Ch. 1 · 38 pp', path:'week2-ch1-g.pdf', title:'Ch. 1, g: Intelligence and Genetic Fate'},
+          {id:'w2-gould', label:'Gould, <i>The Mismeasure of Man</i>, ch. 6', pending:true}]},
   {n:3, date:'Nov 20', title:'Ch. 2, “The ‘Blue Brain’”',
-   files:[{id:'w3', label:'Ch. 2 · 42 pp', path:'week3-ch2-blue-brain.pdf', title:'Ch. 2, The “Blue Brain”'}],
-   opt:'Optional: Markram, “The Blue Brain Project,” <i>Nature Reviews Neuroscience</i> 7 (2006)'},
+   files:[{id:'w3', label:'Malabou, Ch. 2 · 42 pp', path:'week3-ch2-blue-brain.pdf', title:'Ch. 2, The “Blue Brain”'},
+          {id:'w3-markram', label:'Markram, “The Blue Brain Project” (2006)', pending:true}]},
   {break:true, text:'Nov 27 · no meeting (Thanksgiving)'},
   {n:4, date:'Dec 4', title:'Ch. 3, “Like a Pollock Painting”',
-   files:[{id:'w4', label:'Ch. 3 · 42 pp', path:'week4-ch3-pollock.pdf', title:'Ch. 3, Like a Pollock Painting'}],
-   opt:'Optional: Malabou, <i>Before Tomorrow: Epigenesis and Rationality</i> (2016), excerpt'},
+   files:[{id:'w4', label:'Malabou, Ch. 3 · 42 pp', path:'week4-ch3-pollock.pdf', title:'Ch. 3, Like a Pollock Painting'},
+          {id:'w4-bt', label:'Malabou, <i>Before Tomorrow</i>, excerpt', pending:true}]},
   {n:5, date:'Dec 11', title:'Conclusion and Postscript, “Artificial Intelligence: The Fourth Blow to Our Narcissism”',
-   files:[{id:'w5', label:'Conclusion + Postscript · 26 pp', path:'week5-conclusion-postscript.pdf', title:'Conclusion and Postscript'}],
-   opt:'Optional: Freud, “A Difficulty in the Path of Psycho-Analysis” (1917)'},
-  {n:0, date:'Notes', title:'Endnotes for all chapters',
-   files:[{id:'notes', label:'Endnotes · 22 pp', path:'endnotes.pdf', title:'Endnotes, Morphing Intelligence'}], opt:null}
+   files:[{id:'w5', label:'Malabou, Conclusion + Postscript · 26 pp', path:'week5-conclusion-postscript.pdf', title:'Conclusion and Postscript'},
+          {id:'w5-freud', label:'Freud, “A Difficulty in the Path of Psycho-Analysis” (1917)', pending:true}]},
+  {n:6, date:'Dec 18', title:'Malabou and Derrida on the trace',
+   files:[{id:'w6-derrida', label:'Derrida, “A Time for Farewells” · 23 pp', path:'week6-derrida-preface-future-of-hegel.pdf', title:'Derrida, A Time for Farewells: Heidegger (read by) Hegel (read by) Malabou'},
+          {id:'w6-stec', label:'Stec, “Ontology After the Accident” · 24 pp', path:'week6-stec-ontology-after-the-accident.pdf', title:'Stec, Ontology After the Accident: Derrida, Malabou, and the Future of the Trace'},
+          {id:'w6-malabou', label:'Malabou, “Are There Still Traces?” · 10 pp', path:'week6-malabou-are-there-still-traces.pdf', title:'Malabou, Are There Still Traces? Memory and the Obsolescence of the Paradigm of Inscription'}]},
+  {n:0, date:'Notes', title:'Endnotes for all chapters of <i>Morphing Intelligence</i>',
+   files:[{id:'notes', label:'Endnotes · 22 pp', path:'endnotes.pdf', title:'Endnotes, Morphing Intelligence'}]}
 ];
-const FILES = {}; WEEKS.forEach(w => (w.files||[]).forEach(f => { f.week = w; FILES[f.id] = f; }));
+const FILES = {}; WEEKS.forEach(w => (w.files||[]).forEach(f => { f.week = w; if (f.path) FILES[f.id] = f; }));
 
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 let user = null, displayName = '', authBusy = false;

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex, nofollow">
 <title>Morphing Intelligence — Reading Group</title>
-<link rel="stylesheet" href="app.css?v=7">
+<link rel="stylesheet" href="app.css?v=8">
 <script src="libs/supabase.min.js"></script>
 </head>
 <body>
@@ -36,19 +36,19 @@
 
 <div class="wrap">
   <div class="inner">
-    <div class="lead">A chapter a week. Open a reading to read it here, highlight passages, and leave notes for the group; the reader has a Download button for a copy to print or annotate offline. Each week’s reading comes to about 40 pages, and the last is a bit shorter.</div>
+    <div class="lead">A chapter a week, each paired with the source Malabou works from in it; the last meeting sets her against Derrida on the trace. Open a reading to read it here, highlight passages, and leave notes for the group; the reader has a Download button for a copy to print or annotate offline.</div>
     <div id="list"></div>
   </div>
 </div>
 
-<script src="app.js?v=7"></script>
+<script src="app.js?v=8"></script>
 <script>
 function onSignedIn(){
   const s = seen(); const html = [];
   for (const w of WEEKS){
     if (w.break){ html.push(`<div class="break">${w.text}</div>`); continue; }
-    const files = w.files.map(f => `<a href="read.html#${f.id}" class="${s[f.id]?'seen':''}">${f.label}</a>`).join('');
-    html.push(`<div class="wk"><div class="d">${w.date}${w.n?`<small>Week ${w.n}</small>`:''}</div><div><div class="t">${w.title}</div><div class="f">${files}</div>${w.opt?`<div class="opt">${w.opt}</div>`:''}</div></div>`);
+    const files = w.files.map(f => f.pending ? `<span class="pend" title="PDF to come">${f.label}<small>PDF to come</small></span>` : `<a href="read.html#${f.id}" class="${s[f.id]?'seen':''}">${f.label}</a>`).join('');
+    html.push(`<div class="wk"><div class="d">${w.date}${w.n?`<small>Week ${w.n}</small>`:''}</div><div><div class="t">${w.title}</div><div class="f">${files}</div></div></div>`);
   }
   $('list').innerHTML = html.join('');
 }
