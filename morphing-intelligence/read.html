@@ -6,7 +6,7 @@
 <meta name="robots" content="noindex, nofollow">
 <title>Reading — Morphing Intelligence</title>
 <link rel="stylesheet" href="libs/pdf_viewer.min.css">
-<link rel="stylesheet" href="app.css?v=6">
+<link rel="stylesheet" href="app.css?v=7">
 <script src="libs/pdf.min.js"></script>
 <script src="libs/supabase.min.js"></script>
 </head>
@@ -62,7 +62,7 @@
 <div class="pop" id="pop"><button onclick="startAnnotation()">Highlight &amp; note</button></div>
 <div class="toast" id="toast"></div>
 
-<script src="app.js?v=6"></script>
+<script src="app.js?v=7"></script>
 <script>
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'libs/pdf.worker.min.js';
 let current = null, pdfDoc = null, scale = 1, annotations = [];
@@ -150,7 +150,7 @@ async function loadAnnotations(){
   renderAnnotations(); applyHighlights();
 }
 async function saveAnnotation(){
-  const comment=$('formText').value.trim(), shared=!$('formPrivate').checked;
+  const comment=curl($('formText').value.trim()), shared=!$('formPrivate').checked;
   if (editingId){
     const { error } = await db.from('group_annotations').update({ comment, shared, updated_at:new Date().toISOString() }).eq('id', editingId);
     if (error) return toast('Save failed: '+error.message);
@@ -167,7 +167,7 @@ async function deleteAnnotation(id){
   await loadAnnotations();
 }
 async function saveReply(id){
-  const ta=$('reply-'+id); const text=(ta.value||'').trim(); if(!text) return;
+  const ta=$('reply-'+id); const text=curl((ta.value||'').trim()); if(!text) return;
   const a=annotations.find(x=>x.id===id); const replies=[...(a.replies||[]), {id:Date.now().toString(), comment:text, author_email:user.email, author_name:displayName, created_at:new Date().toISOString()}];
   const { error } = await db.from('group_annotations').update({ replies }).eq('id', id);
   if (error) return toast('Reply failed: '+error.message);

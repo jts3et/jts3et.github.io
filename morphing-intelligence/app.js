@@ -34,6 +34,13 @@ const $ = id => document.getElementById(id);
 
 function gateMsg(t, cls){ const m=$('gateMsg'); if(m){ m.textContent=t||''; m.className='gate-msg '+(cls||''); } }
 function toast(t){ const e=$('toast'); if(!e) return; e.textContent=t; e.classList.add('on'); setTimeout(()=>e.classList.remove('on'),2200); }
+/* Curly quotes and apostrophes for typed notes. */
+function curl(t){
+  return (t||'')
+    .replace(/(^|[\s(\[{\u2014\u2013"-])'/g, '$1\u2018').replace(/'/g, '\u2019')
+    .replace(/(^|[\s(\[{\u2014\u2013\u2018-])"/g, '$1\u201C').replace(/"/g, '\u201D')
+    .replace(/\.\.\./g, '\u2026');
+}
 function esc(t){ const d=document.createElement('div'); d.textContent=t||''; return d.innerHTML; }
 function seen(){ try { return JSON.parse(localStorage.getItem('mi_seen')||'{}'); } catch(e){ return {}; } }
 function markSeen(id){ try { const s=seen(); s[id]=1; localStorage.setItem('mi_seen', JSON.stringify(s)); } catch(e){} }
@@ -95,22 +102,22 @@ async function afterAuth(session){
     const m = await isMember(session.user.email);
     if (!m) {
       gateMsg('This address (' + session.user.email + ') is not on the invite list. Sign in with the address the invitation reached you at, or write to jtstec@iu.edu.', 'err');
-      await db.auth.signOut(); return;
+      document.body.classList.add('out'); await db.auth.signOut(); return;
     }
     if (user && user.id === session.user.id) return;
     user = session.user; displayName = m.display_name || session.user.email;
-    $('gate').hidden = true; document.body.classList.add('in');
+    $('gate').hidden = true; document.body.classList.add('in'); document.body.classList.remove('out');
     const who=$('whoName'); if (who) who.textContent = displayName;
     if (typeof onSignedIn === 'function') onSignedIn();
   } finally { authBusy = false; }
 }
 db.auth.onAuthStateChange((event, session) => {
   if (event === 'PASSWORD_RECOVERY' || (session && /type=recovery/.test(location.hash))) {
-    recovering = true; $('gate').hidden=false;
+    recovering = true; $('gate').hidden=false; document.body.classList.add('out');
     const a=$('pwStep'), b=$('setPwStep'); if (a) a.hidden = true; if (b) { b.hidden = false; $('newPw').focus(); }
     gateMsg('Choose a password for the reading group.', 'ok'); return;
   }
-  if (!session?.user) { $('gate').hidden=false; document.body.classList.remove('in'); user = null; return; }
+  if (!session?.user) { $('gate').hidden=false; document.body.classList.remove('in'); document.body.classList.add('out'); user = null; return; }
   if (recovering) return;
   if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') setTimeout(() => afterAuth(session), 0);
 });
