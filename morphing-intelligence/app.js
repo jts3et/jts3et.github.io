@@ -57,9 +57,10 @@ async function signedUrl(path, secs){
   if (error) throw error; return data.signedUrl;
 }
 
-/* Each page defines onSignedIn(); this wires the gate to it. */
-db.auth.onAuthStateChange(async (event, session) => {
-  if (!session?.user) { $('gate').hidden=false; document.body.classList.remove('in'); return; }
+/* Each page defines onSignedIn(); this wires the gate to it.
+   The membership check runs outside the auth callback (deferred), because calling the
+   database from inside onAuthStateChange can deadlock the client's auth lock. */
+async function afterAuth(session){
   if (authBusy) return; authBusy = true;
   try {
     const m = await isMember(session.user.email);
@@ -67,9 +68,14 @@ db.auth.onAuthStateChange(async (event, session) => {
       gateMsg('This address (' + session.user.email + ') is not on the invite list. Sign in with the address the invitation reached you at, or write to jtstec@iu.edu.', 'err');
       await db.auth.signOut(); return;
     }
+    if (user && user.id === session.user.id) return;
     user = session.user; displayName = m.display_name || session.user.email;
     $('gate').hidden = true; document.body.classList.add('in');
     const who=$('whoName'); if (who) who.textContent = displayName;
     if (typeof onSignedIn === 'function') onSignedIn();
   } finally { authBusy = false; }
+}
+db.auth.onAuthStateChange((event, session) => {
+  if (!session?.user) { $('gate').hidden=false; document.body.classList.remove('in'); user = null; return; }
+  if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') setTimeout(() => afterAuth(session), 0);
 });
