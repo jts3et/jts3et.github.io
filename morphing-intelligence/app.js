@@ -47,7 +47,17 @@ async function signIn(){
 }
 async function signOut(){ await db.auth.signOut(); location.href = 'index.html'; }
 
-/* "Email me a link": Supabase sends a set-password link that returns to this site. */
+/* "Email me my password": the OTP email template shows the assigned password stored in the
+   user's metadata ({{ .Data.group_password }}); no link or code is involved. */
+async function emailPassword(){
+  const email = $('gateEmail').value.trim().toLowerCase();
+  if (!email) return gateMsg('Enter your email address first.', 'err');
+  gateMsg('Sending…');
+  const { error } = await db.auth.signInWithOtp({ email, options: { shouldCreateUser: false } });
+  if (error) return gateMsg(/signups not allowed|not found/i.test(error.message) ? 'That address is not on the invite list. Use the address the invitation reached you at, or write to jtstec@iu.edu.' : error.message, 'err');
+  gateMsg('Sent. Your password is in the email; check spam if it does not arrive in a minute.', 'ok');
+}
+/* "Email me a link" (kept for recovery): Supabase sends a set-password link that returns to this site. */
 let recovering = false;
 async function emailLink(){
   const email = $('gateEmail').value.trim().toLowerCase();
