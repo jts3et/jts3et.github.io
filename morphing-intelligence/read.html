@@ -6,7 +6,7 @@
 <meta name="robots" content="noindex, nofollow">
 <title>Reading — Morphing Intelligence</title>
 <link rel="stylesheet" href="libs/pdf_viewer.min.css">
-<link rel="stylesheet" href="app.css?v=4">
+<link rel="stylesheet" href="app.css?v=5">
 <script src="libs/pdf.min.js"></script>
 <script src="libs/supabase.min.js"></script>
 </head>
@@ -16,10 +16,11 @@
   <div class="gate-box">
     <h1>Morphing Intelligence</h1>
     <div class="sub">Catherine Malabou · Center for Possible Minds reading group · Fall 2026</div>
-    <div class="row">
+    <div class="row" id="pwStep">
       <input type="email" id="gateEmail" placeholder="your email address" autocomplete="email" onkeydown="if(event.key==='Enter')signIn()">
       <input type="password" id="gatePw" placeholder="password" autocomplete="current-password" onkeydown="if(event.key==='Enter')signIn()">
       <button class="btn acc" onclick="signIn()">Sign in</button>
+      <a class="btn" href="index.html">No password yet?</a>
     </div>
     <div class="gate-msg" id="gateMsg"></div>
     <p class="fine">Use the email address and password from the invitation. Lost them? Write to jtstec@iu.edu.</p>
@@ -61,7 +62,7 @@
 <div class="pop" id="pop"><button onclick="startAnnotation()">Highlight &amp; note</button></div>
 <div class="toast" id="toast"></div>
 
-<script src="app.js?v=4"></script>
+<script src="app.js?v=5"></script>
 <script>
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'libs/pdf.worker.min.js';
 let current = null, pdfDoc = null, scale = 1, annotations = [];

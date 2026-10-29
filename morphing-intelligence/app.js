@@ -47,6 +47,25 @@ async function signIn(){
 }
 async function signOut(){ await db.auth.signOut(); location.href = 'index.html'; }
 
+/* "Email me a link": Supabase sends a set-password link that returns to this site. */
+let recovering = false;
+async function emailLink(){
+  const email = $('gateEmail').value.trim().toLowerCase();
+  if (!email) return gateMsg('Enter your email address first.', 'err');
+  gateMsg('Sending…');
+  const { error } = await db.auth.resetPasswordForEmail(email, { redirectTo: location.origin + location.pathname.replace(/[^/]*$/, '') + 'index.html' });
+  if (error) return gateMsg(error.message, 'err');
+  gateMsg('Sent. Open the link in the email from Supabase and you will be asked to choose a password. Check spam if it does not arrive in a minute.', 'ok');
+}
+async function setPassword(){
+  const pw = $('newPw').value;
+  if (pw.length < 8) return gateMsg('Use at least 8 characters.', 'err');
+  const { error } = await db.auth.updateUser({ password: pw });
+  if (error) return gateMsg(error.message, 'err');
+  recovering = false; $('setPwStep').hidden = true; $('pwStep').hidden = false; gateMsg('');
+  const s = await db.auth.getSession(); if (s.data.session) afterAuth(s.data.session);
+}
+
 async function isMember(email){
   const { data, error } = await db.from('group_members').select('email, display_name').eq('group_slug', GROUP).ilike('email', email).maybeSingle();
   if (error) { console.warn(error); return null; }
@@ -76,6 +95,12 @@ async function afterAuth(session){
   } finally { authBusy = false; }
 }
 db.auth.onAuthStateChange((event, session) => {
+  if (event === 'PASSWORD_RECOVERY' || (session && /type=recovery/.test(location.hash))) {
+    recovering = true; $('gate').hidden=false;
+    const a=$('pwStep'), b=$('setPwStep'); if (a) a.hidden = true; if (b) { b.hidden = false; $('newPw').focus(); }
+    gateMsg('Choose a password for the reading group.', 'ok'); return;
+  }
   if (!session?.user) { $('gate').hidden=false; document.body.classList.remove('in'); user = null; return; }
+  if (recovering) return;
   if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') setTimeout(() => afterAuth(session), 0);
 });

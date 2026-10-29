@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex, nofollow">
 <title>Morphing Intelligence — Reading Group</title>
-<link rel="stylesheet" href="app.css?v=4">
+<link rel="stylesheet" href="app.css?v=5">
 <script src="libs/supabase.min.js"></script>
 </head>
 <body>
@@ -14,13 +14,18 @@
   <div class="gate-box">
     <h1>Morphing Intelligence</h1>
     <div class="sub">Catherine Malabou · Center for Possible Minds reading group · Fall 2026</div>
-    <div class="row">
+    <div class="row" id="pwStep">
       <input type="email" id="gateEmail" placeholder="your email address" autocomplete="email" onkeydown="if(event.key==='Enter')signIn()">
       <input type="password" id="gatePw" placeholder="password" autocomplete="current-password" onkeydown="if(event.key==='Enter')signIn()">
       <button class="btn acc" onclick="signIn()">Sign in</button>
+      <button class="btn" onclick="emailLink()">No password yet? Email me a link</button>
+    </div>
+    <div class="row" id="setPwStep" hidden>
+      <input type="password" id="newPw" placeholder="choose a password (8+ characters)" autocomplete="new-password" onkeydown="if(event.key==='Enter')setPassword()">
+      <button class="btn acc" onclick="setPassword()">Save password</button>
     </div>
     <div class="gate-msg" id="gateMsg"></div>
-    <p class="fine">Use the email address and password from the invitation. Lost them? Write to jtstec@iu.edu.</p>
+    <p class="fine">Use the email address the invitation reached you at. First visit: enter your address and click “Email me a link”; the link brings you back here to choose a password. Questions: jtstec@iu.edu.</p>
   </div>
 </div>
 
@@ -36,7 +41,7 @@
   </div>
 </div>
 
-<script src="app.js?v=4"></script>
+<script src="app.js?v=5"></script>
 <script>
 function onSignedIn(){
   const s = seen(); const html = [];
